@@ -74,13 +74,29 @@ struct RawDictionaryStorage<Key: Hashable, Value> {
         return HashTable.init(words: hashTablePtr, bucketMask: bucketCount &- 1)
     }
     
+    mutating func getWordCount() -> Int {
+        let bucketCount = (1 as Int) &<< scale
+        let kElement = bucketCount &+ UInt.bitWidth &- 1
+        let element = UInt(bitPattern: kElement)
+        let capacity = UInt(bitPattern: UInt.bitWidth)
+        return Int(bitPattern: element / capacity)
+    }
+    
     mutating func printAllKeysAndValues() {
         let hashTable = getHashTable()
-        for i in 0..<(1 &<< Int(scale)) {
-            if ((1 &<< i & hashTable.words.pointee) != 0) {
-                print("字典的key：\(rawKeys.advanced(by: i).pointee)")
-                print("字典的value：\(rawValues.advanced(by: i).pointee)")
-                print("-------------------")
+        let wordCount = getWordCount()
+        let bucketCount = (1 as Int) &<< scale
+        wordloop: for wordIndex in 0..<wordCount {
+            bitloop: for bitIndex in 0..<UInt.bitWidth {
+                let index = wordIndex * UInt.bitWidth + bitIndex
+                if index >= bucketCount {
+                    break wordloop
+                }
+                if ((1 &<< bitIndex & hashTable.words.advanced(by: wordIndex).pointee) != 0) {
+                    print("字典的key：\(rawKeys.advanced(by: index).pointee)")
+                    print("字典的value：\(rawValues.advanced(by: index).pointee)")
+                    print("-------------------")
+                }
             }
         }
     }
@@ -107,11 +123,11 @@ print(dic)
 
 print("\n\n-------华丽的分隔符，很神奇哦，每次打印的顺序都不一样--------\n\n")
 
-dic[777] = "joke"
-dic[7774] = "joke3"
-dic[7775] = "joke4"
-dic[7776] = "joke5"
-dic[7777] = "joke6"
+let time = 65
+for i in 0..<time {
+    dic[i] = "dog\(i)"
+}
+
 
 buffer = getDictionaryBuffer(from: &dic)
 
@@ -119,6 +135,9 @@ print("字典内容个数：\(buffer.storage.pointee.count)")
 
 buffer.storage.pointee.printAllKeysAndValues()
 print(dic)
+//withUnsafePointer(to: &dic) {
+//    print($0)
+//}
 //print("end")
 
 
